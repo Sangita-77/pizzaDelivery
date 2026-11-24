@@ -1,10 +1,10 @@
 {
   "name": "fornello-backend",
   "version": "1.0.0",
-  "description": "Fornello Artisan Pizza API — Node.js (Express) + MongoDB",
+  "description": "Fornello Artisan Pizza API \u2014 Node.js (Express) + MongoDB",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node init && node server.js"
   },
   "license": "UNLICENSED",
   "private": true,

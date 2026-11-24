@@ -2,7 +2,6 @@
 
 # IDE and editors
 .idea/
-.vscode/
 
 # Dependencies
 node_modules/
@@ -79,4 +78,5 @@ agenthub/agents/youtube/db
 memory/test_credentials.md
 
 # Mobile development
-android-sdk/
+android-sdk/frontend.zip
+config.bat
