@@ -1,0 +1,54 @@
+{
+  "summary": "I tested the Node/Express backend (through the Python proxy) and the Expo web UI at 390x844. Backend: 18 of 19 pytest checks pass after I fixed 2 bugs. The one remaining failure is GET /api/orders/<id that is not a valid ObjectId>, which returns 500. The first bug was that the login, register, me and address responses spread Mongoose subdocuments, so they leaked the user's bcrypt passwordHash through $__parent and returned no usable fields on addresses. The second bug was that the builder charged twice for a duplicated topping id. Frontend: every requested flow worked end to end. That covers login/register (including error messages), home quick-add with the cart badge, item size changes, the qty stepper, the builder's live price, cart with promo codes (BOGUS gives an error, WELCOME10 takes 10% off), checkout with a saved or new address, and Place order, which lands on /order/[id] with the confirmed banner and an empty cart. The frontend total matched the backend total in both orders ($31.15 and $28.09). I also checked timeline polling and the driver card at 'On its way', the Orders tab (Track and Re-order), the Menu tab (search, Veg only, Drinks chip, empty state with reset), profile address add and remove, and sign out. Remaining issues are listed in action_items. Deprecated packages detected: none. SafeAreaView issues detected: none (the app uses react-native-safe-area-context insets).",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/auth/login, POST /api/auth/register, GET/PUT /api/auth/me, POST/DELETE /api/auth/addresses", "issue": "FIXED BY TESTER. publicUser() in src/auth.js did {...a} on Mongoose subdocuments. Each address came back as {__parentArray, $__parent, $__, _doc}. That leaked the bcrypt passwordHash (login selects +passwordHash) and the address id/line1/city fields were missing. The same pattern in orders.js:108 (addressId branch) was also fixed with toObject().", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "GET /api/orders/:id", "issue": "An id that is not a valid ObjectId returns 500 with a CastError message. It should return 404 or 400. Guard with mongoose.isValidObjectId(req.params.id)."},
+      {"endpoint": "POST /api/orders (custom)", "issue": "FIXED BY TESTER. In builder.js the duplicate-topping check compared x.id against an array of strings, so duplicate ids were charged twice. It now uses toppings.includes(t.id)."},
+      {"endpoint": "auth rate limiter", "issue": "In src/auth.js:11, standardHeaders:'draft-1' is not supported by express-rate-limit 8.x and throws ERR_ERL_HEADERS_UNSUPPORTED_DRAFT_VERSION in node-backend.log. 'trust proxy' is not set either, so every client reaches Node from 127.0.0.1 through the Python proxy and they all share one 40-requests-per-15-minutes bucket."},
+      {"endpoint": "POST /api/orders", "issue": "The order number is a random 4-digit value with no uniqueness check, so collisions are possible. etaMinutes stays fixed at 28 at every status."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Checkout new-address flow", "issue": "After placing an order with a new address (saveAddress:true), the address is saved on the server but the auth context user is never refreshed. Profile and the next checkout do not show it until the app is reloaded. Every new-address order also saves another copy of the address.", "testID": "checkout-add-address-toggle", "priority": "MEDIUM"},
+      {"component": "Order tracking summary", "issue": "The 'Delivery to' value is squeezed to '24 / Emb…' because the value Text uses flex:0 with maxWidth 200 while the label has flex:1. Notes wrap the same way. Reference: app/order/[id].tsx:150", "testID": "order-summary", "priority": "LOW"},
+      {"component": "Cart persistence across accounts", "issue": "Signing out does not clear the cart or promo. A newly registered user inherited the previous user's cart item (badge showed 1).", "testID": "profile-signout-button", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Home", "issues": ["The popular-card quick-add button is 32x32, below the 44pt minimum (app/(tabs)/index.tsx:371).", "The 'Popular this week' row starts with a dessert (Lava Cake) rather than a pizza."]},
+      {"screen": "Item detail", "issues": ["The qty stepper buttons are 36x36, below 44pt."]},
+      {"screen": "Cart", "issues": ["The success toast ('Promo applied') sits over the header title and back button."]},
+      {"screen": "Profile", "issues": ["Removing an address has no confirmation step."]}
+    ],
+    "react_native_issues": [
+      {"component": "MenuItemRow nested Pressable", "issue": "A Pressable is nested inside a Pressable (button inside button). On web this triggers a hydration error, and in dev the LogBox toast covers the bottom sticky bars (item Add to cart, qty stepper, cart Checkout, builder Add). Coordinate taps in the web preview land on the LogBox instead of the buttons. Reference: src/components/MenuItemRow.tsx:24,52"}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_fornello_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Return 404 for invalid ObjectIds in GET /api/orders/:id.",
+    "After a successful order with saveAddress, refresh the auth user (GET /api/auth/me or update the context). Skip saving duplicate addresses.",
+    "Fix the rate limiter: use standardHeaders:'draft-7' and add app.set('trust proxy', true or the hop count) so limits apply per client IP.",
+    "Clear the cart and promo on signOut, or key the cart storage by user.",
+    "Fix the truncated 'Delivery to' and 'Notes' values on the order tracking screen.",
+    "Raise the home quick-add button and item qty stepper to at least 44pt (or add hitSlop).",
+    "Restructure MenuItemRow so the add button is not nested inside the card Pressable.",
+    "Note: restarting the backend through supervisor does NOT restart the Node process, because server.py leaves Node running. Kill the 'node server.js' PID after changing Node code; the watchdog respawns it within 15s."
+  ],
+  "critical_code_review_comments": [
+    "Never spread Mongoose subdocs or docs ({...doc}); use toObject() or lean().",
+    "The orders schedule() and advance() timers live in memory. catchUpAll covers restarts, which is OK for a demo.",
+    "There is no delete endpoint for orders or users, so test data cannot be cleaned up."
+  ],
+  "updated_files": ["/app/backend/src/auth.js", "/app/backend/src/builder.js", "/app/backend/src/orders.js", "/app/backend/tests/test_fornello_api.py"],
+  "success_rate": {"backend": "95% (18/19)", "frontend": "~95% (all requested flows pass; stale address after checkout)"},
+  "seed_data_creation": "Created TEST orders on testy@fornello.com (2 from the UI with notes 'TEST_ui order' and one from pytest per run with notes 'TEST_order'). Created several test_*@example.com / test_ui_*@example.com users and their orders. There is no delete API, so these remain. The TEST_ addresses added to testy were deleted, and testy is back to its single Home address.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -n0 (xdist is on by default and breaks the class-level shared ids). In the web preview, use locator.dispatch_event('click') instead of coordinate clicks, because the dev LogBox toast covers the bottom sticky buttons. The auth rate limit is effectively global (40 requests per 15 minutes), so keep logins to a minimum.",
+  "rca_of_issue": "The passwordHash leak and the empty addresses came from {...a} on Mongoose subdocuments in auth.js publicUser. Spreading copies internal properties ($__parent, which holds the full parent doc including the selected passwordHash) instead of the schema fields. Mitigation: a.toObject(). Verified by test_login_no_hash_leak."
+}

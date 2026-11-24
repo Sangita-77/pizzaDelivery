@@ -1,30 +1,58 @@
-import { View, StyleSheet, Image } from "react-native";
+import { useEffect } from "react";
+import { Text, View } from "react-native";
+import { Ionicons } from "@react-native-vector-icons/ionicons";
+import { useRouter } from "expo-router";
 
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { useAuth } from "@/src/auth";
+import { fonts, makeStyles, radius, useTheme } from "@/src/theme";
 
 export default function Index() {
-  console.log(EXPO_PUBLIC_BACKEND_URL, "EXPO_PUBLIC_BACKEND_URL");
+  const { ready, user } = useAuth();
+  const router = useRouter();
+  const { colors } = useTheme();
+  const styles = useStyles();
+
+  useEffect(() => {
+    if (!ready) return;
+    router.replace(user ? "/(tabs)" : "/login");
+  }, [ready, user, router]);
 
   return (
-    <View style={styles.container}>
-      <Image
-        source={require("../assets/images/app-image.png")}
-        style={styles.image}
-      />
+    <View style={styles.splash} testID="splash-gate">
+      <View style={styles.badge}>
+        <Ionicons name="flame" size={40} color={colors.onBrandPrimary} />
+      </View>
+      <Text style={styles.wordmark}>Fornello</Text>
+      <Text style={styles.tagline}>Artisan wood-fired pizza</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
+const useStyles = makeStyles((colors) => ({
+  splash: {
     flex: 1,
-    backgroundColor: "#0c0c0c",
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+  },
+  badge: {
+    width: 88,
+    height: 88,
+    borderRadius: radius.pill,
+    backgroundColor: colors.brandPrimary,
     alignItems: "center",
     justifyContent: "center",
   },
-  image: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "contain",
+  wordmark: {
+    fontFamily: fonts.display,
+    fontSize: 34,
+    color: colors.onSurface,
   },
-});
+  tagline: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: colors.muted,
+    letterSpacing: 0.4,
+  },
+}));

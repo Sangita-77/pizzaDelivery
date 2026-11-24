@@ -1,0 +1,184 @@
+{
+  "app_name": "Fornello Artisan Pizza",
+  "personality": "3 Editorial Mobile LIGHT with 1 iOS-Native Clean structure",
+  "personality_one_liner": "Warm artisan pizza delivery with creamy tones, burnt orange flame accents, and wood-fired editorial typography.",
+  "color": {
+    "surface": "#FDFBF7",
+    "onSurface": "#2C2621",
+    "surfaceSecondary": "#F5EFE6",
+    "onSurfaceSecondary": "#3D352E",
+    "surfaceTertiary": "#EBE2D3",
+    "onSurfaceTertiary": "#4E433A",
+    "surfaceInverse": "#1F1A17",
+    "onSurfaceInverse": "#FDFBF7",
+    "brand": "#D95D39",
+    "brandPrimary": "#D95D39",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#B54322",
+    "onBrandSecondary": "#FFFFFF",
+    "brandTertiary": "#FCECE6",
+    "onBrandTertiary": "#B54322",
+    "success": "#3B6D4F",
+    "onSuccess": "#FFFFFF",
+    "warning": "#C27803",
+    "onWarning": "#FFFFFF",
+    "error": "#BA3C3C",
+    "onError": "#FFFFFF",
+    "info": "#3A6073",
+    "onInfo": "#FFFFFF",
+    "border": "#E5DCD0",
+    "borderStrong": "#D95D39",
+    "divider": "#EFE7DC",
+    "muted": "#7A6E63",
+    "onBrand": "#FFFFFF"
+  },
+  "typography": {
+    "displayFontFamily": "Playfair Display",
+    "textFontFamily": "Satoshi",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous magazine-like vertical padding, comfortable touch targets, sticky bottom action bar with safe area inset.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "1",
+  "navigation": "bottom_tabs",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": true,
+    "do's": [
+      "Use frosted glass on sticky category header filters",
+      "Use glass overlay on hero artisan banner with 75% surface tint",
+      "Use glass bottom tab bar over scrolling content"
+    ],
+    "dont's": [
+      "Never blur list items or form fields",
+      "Never allow low contrast text on glass"
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Home",
+      "purpose": "Browse artisan categories, featured wood-fired pizzas, quick access to custom pizza builder and cart.",
+      "states": {
+        "loading": "Centered warm spinner with flame accent",
+        "empty": "Warm illustration of empty oven with 'No wood-fired pizzas found' and reset filters button",
+        "error": "Friendly error message with retry button and fallback menu"
+      },
+      "layout": "Hero banner with wood-fired oven photography and gradient scrim, horizontal category pills (All, Neapolitan, Wood-Fired, Vegan, Sides, Drinks), promotional builder banner, vertical list of artisan pizza cards with pricing and quick Add button."
+    },
+    {
+      "name": "Menu",
+      "purpose": "Detailed searchable category browsing with filtering for dietary and crust options.",
+      "states": {
+        "loading": "Skeleton card placeholders with warm cream shimmer",
+        "empty": "Empty state with search reset and popular recommendations",
+        "error": "Network error banner with retry action"
+      },
+      "layout": "Sticky top search bar with filter chips, scrollable category tabs, two-column or full-width editorial pizza cards with high-res food photography."
+    },
+    {
+      "name": "CustomPizzaBuilder",
+      "purpose": "Interactive Domino's-style custom pizza builder where users choose size, crust, sauce, cheese, and toppings.",
+      "states": {
+        "loading": "Building canvas loader",
+        "empty": "Select a size to start building your master pizza",
+        "error": "Error saving custom recipe, retry button"
+      },
+      "layout": "Step-by-step interactive builder: 1. Select Size (Personal, Medium, Large), 2. Choose Crust (Artisan Sourdough, Thin Crispy, Stuffed Crust), 3. Sauce & Cheese, 4. Toppings grid with live price calculator and sticky 'Add Custom Pizza to Cart' bottom button."
+    },
+    {
+      "name": "Cart",
+      "purpose": "Review selected items, adjust quantities, apply promo codes, and proceed to checkout.",
+      "states": {
+        "loading": "Loading cart items",
+        "empty": "Warm empty cart illustration with 'Your oven is cold! Add a delicious artisan pizza to begin.' and 'Browse Menu' CTA",
+        "error": "Failed to sync cart, retry"
+      },
+      "layout": "Itemized list with quantity steppers, special instructions input, delivery fee breakdown, promo code input, and sticky bottom checkout bar with total price."
+    },
+    {
+      "name": "Checkout",
+      "purpose": "Select saved delivery address, confirm Cash on Delivery payment, and place order.",
+      "states": {
+        "loading": "Processing checkout...",
+        "empty": "Add a delivery address to proceed",
+        "error": "Address validation error, correct and retry"
+      },
+      "layout": "Saved address selector with map pin, delivery notes input, Cash on Delivery payment summary card, and sticky 'Place Artisan Order' primary button."
+    },
+    {
+      "name": "OrderTracking",
+      "purpose": "Live step-by-step visual order tracking from oven baking to doorstep delivery.",
+      "states": {
+        "loading": "Connecting to kitchen live feed...",
+        "empty": "No active orders to track",
+        "error": "Connection lost, retrying live tracker..."
+      },
+      "layout": "Active order status header with estimated delivery time (25-35 mins), vertical timeline (Order Placed -> Wood-Fired Oven Baking -> Quality Check -> Out for Delivery -> Delivered), driver contact card, and order summary."
+    },
+    {
+      "name": "OrdersHistory",
+      "purpose": "View past orders with quick re-order capabilities.",
+      "states": {
+        "loading": "Loading past oven sessions...",
+        "empty": "No past orders yet. Your artisan journey starts here!",
+        "error": "Could not load order history, retry"
+      },
+      "layout": "List of past orders with date, status badge, items summary, total price, and 'Re-order' quick action button."
+    },
+    {
+      "name": "Profile",
+      "purpose": "User account management, saved addresses, favorite pizzas, and sign out.",
+      "states": {
+        "loading": "Loading profile details...",
+        "empty": "Please sign in to view profile",
+        "error": "Failed to load profile, retry"
+      },
+      "layout": "User avatar header with email and membership status, saved addresses section, favorite pizzas list, preferences, and sign out button."
+    }
+  ],
+  "images": {
+    "hero_pizza": {
+      "url": "https://images.unsplash.com/photo-1604068549290-dea0e4a305ca?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njl8MHwxfHNlYXJjaHwxfHxtYXJnaGVyaXRhJTIwcGl6emElMjBmb29kJTIwcGhvdG9ncmFwaHklMjBoaWdoJTIwcmVzb2x1dGlvbnxlbnwwfHx8fDE3OTU1MTUwMTR8MA&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1604068549290-dea0e4a305ca?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njl8MHwxfHNlYXJjaHwxfHxtYXJnaGVyaXRhJTIwcGl6emElMjBmb29kJTIwcGhvdG9ncmFwaHklMjBoaWdoJTIwcmVzb2x1dGlvbnxlbnwwfHx8fDE3OTU1MTUwMTR8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Wood-fired Margherita artisan pizza with fresh basil"
+    },
+    "wood_oven": {
+      "url": "https://images.pexels.com/photos/16386277/pexels-photo-16386277.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "dark": "https://images.pexels.com/photos/16386277/pexels-photo-16386277.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Rustic wood-fired oven with flames"
+    }
+  },
+  "instructions_to_main_agent": "Build a React Native (Expo) mobile app for 'Fornello Artisan Pizza' (a Domino's-style full delivery & pizza shop app with menu, custom pizza builder, cart, checkout with Cash on Delivery, live order tracking, order history, and auth). Use Node.js & MongoDB backend architecture. Follow Personality 3 (Editorial Mobile LIGHT) with warm cream (#FDFBF7), burnt orange flame accents (#D95D39), Playfair Display headings, and Satoshi body text. Ensure all touch targets are >= 44x44pt, safe areas are strictly respected, loading/empty/error states are implemented on every screen, and sticky bottom CTAs are used on actionable screens."
+}
