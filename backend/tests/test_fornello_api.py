@@ -182,8 +182,15 @@ class TestOrders:
         r = s.get(f"{API}/orders/not-an-objectid", headers=auth)
         assert r.status_code in (400, 404), f"got {r.status_code} {r.text}"
 
-    def test_status_progresses(self, s, auth):
+    def test_status_stays_placed_no_timer(self, s, auth):
+        # Iteration 2: automatic timer removed; owner advances orders from the kitchen.
         time.sleep(14)
         o = s.get(f"{API}/orders/{TestOrders.oid}", headers=auth).json()["order"]
-        assert o["status"] in ("confirmed", "baking"), o["status"]
-        assert [h["status"] for h in o["statusHistory"]][:2] == ["placed", "confirmed"]
+        assert o["status"] == "placed", o["status"]
+        # cleanup: owner cancels the TEST order so it doesn't linger in the kitchen queue
+        r = s.post(f"{API}/auth/login", json={"email": "owner@fornello.com", "password": "FornoKitchen2026"})
+        if r.status_code == 200:
+            oh = {"Authorization": f"Bearer {r.json()['token']}"}
+            for oid in (TestOrders.oid, getattr(TestOrders, "other_oid", None)):
+                if oid:
+                    s.post(f"{API}/kitchen/orders/{oid}/cancel", json={"reason": "TEST_cleanup"}, headers=oh)

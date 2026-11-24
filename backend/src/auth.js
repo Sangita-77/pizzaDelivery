@@ -29,8 +29,57 @@ function signToken(user) {
   });
 }
 
+const plain = (x) => (typeof x?.toObject === 'function' ? x.toObject() : { ...x });
+
 function publicUser(u) {
-  return { id: u._id.toString(), name: u.name, email: u.email, phone: u.phone, addresses: u.addresses.map((a) => (typeof a.toObject === 'function' ? a.toObject() : { ...a })) };
+  return {
+    id: u._id.toString(),
+    name: u.name,
+    email: u.email,
+    phone: u.phone,
+    role: u.role || 'customer',
+    addresses: u.addresses.map(plain),
+    favorites: (u.favorites || []).map(plain),
+  };
+}
+
+// Role is re-read from the database on every request, never trusted from the token.
+async function requireOwner(req, res, next) {
+  try {
+    const user = await User.findById(req.userId, { role: 1 }).lean();
+    if (!user) return res.status(401).json({ error: 'Account not found' });
+    if (user.role !== 'owner') return res.status(403).json({ error: 'Owner access required' });
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Idempotent: creates the owner once, never overwrites an existing password.
+async function seedOwner() {
+  const email = String(process.env.OWNER_EMAIL || '').trim().toLowerCase();
+  const password = String(process.env.OWNER_PASSWORD || '');
+  if (!email || !password) {
+    console.warn('[auth] OWNER_EMAIL / OWNER_PASSWORD not set — no kitchen account seeded');
+    return;
+  }
+  const existing = await User.findOne({ email }, { role: 1 }).lean();
+  if (existing) {
+    if (existing.role !== 'owner') await User.updateOne({ _id: existing._id }, { $set: { role: 'owner' } });
+    console.log(`[auth] owner account ready: ${email}`);
+    return;
+  }
+  try {
+    const passwordHash = await bcrypt.hash(password, 12);
+    await User.create({ name: 'Fornello Kitchen', email, passwordHash, role: 'owner', addresses: [], favorites: [] });
+    console.log(`[auth] owner account created: ${email}`);
+  } catch (err) {
+    if (err?.code !== 11000) throw err; // another instance created it first
+  }
+}
+
+function sameFavorite(a, b) {
+  return a.kind === b.kind && (a.key || '') === (b.key || '') && JSON.stringify(a.details ?? null) === JSON.stringify(b.details ?? null);
 }
 
 function requireAuth(req, res, next) {
@@ -127,5 +176,43 @@ router.delete('/addresses/:addressId', requireAuth, loadUser, async (req, res, n
   }
 });
 
+router.post('/favorites', requireAuth, loadUser, async (req, res, next) => {
+  try {
+    const kind = req.body.kind === 'custom' ? 'custom' : 'menu';
+    const name = String(req.body.name || '').trim().slice(0, 80);
+    const unitPrice = Number(req.body.unitPrice);
+    if (!name || !Number.isFinite(unitPrice) || unitPrice <= 0) return res.status(400).json({ error: 'Invalid favourite' });
+    const fav = {
+      id: randomUUID(),
+      kind,
+      key: String(req.body.key || ''),
+      name,
+      image: String(req.body.image || ''),
+      unitPrice: Math.round(unitPrice * 100) / 100,
+      details: req.body.details ?? null,
+    };
+    if (!req.user.favorites.some((f) => sameFavorite(plain(f), fav))) {
+      if (req.user.favorites.length >= 30) return res.status(400).json({ error: 'You can save up to 30 favourites' });
+      req.user.favorites.push(fav);
+      await req.user.save();
+    }
+    res.status(201).json({ user: publicUser(req.user) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/favorites/:favId', requireAuth, loadUser, async (req, res, next) => {
+  try {
+    req.user.favorites = req.user.favorites.filter((f) => f.id !== req.params.favId);
+    await req.user.save();
+    res.json({ user: publicUser(req.user) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
 module.exports.requireAuth = requireAuth;
+module.exports.requireOwner = requireOwner;
+module.exports.seedOwner = seedOwner;

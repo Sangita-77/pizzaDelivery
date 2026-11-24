@@ -14,7 +14,7 @@ export default function Index() {
 
   useEffect(() => {
     if (!ready) return;
-    router.replace(user ? "/(tabs)" : "/login");
+    router.replace(!user ? "/login" : user.role === "owner" ? "/kitchen" : "/(tabs)");
   }, [ready, user, router]);
 
   return (

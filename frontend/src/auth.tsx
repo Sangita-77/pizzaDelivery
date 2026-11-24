@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 import { api } from "@/src/api";
 import { storage } from "@/src/utils/storage";
-import type { Address, User } from "@/src/types";
+import type { Address, Favorite, User } from "@/src/types";
 
 const TOKEN_KEY = "auth_token";
 
@@ -16,6 +16,8 @@ type AuthContextValue = {
   removeAddress: (addressId: string) => Promise<void>;
   updateProfile: (input: { name?: string; phone?: string }) => Promise<void>;
   refreshUser: () => Promise<void>;
+  addFavorite: (fav: Omit<Favorite, "id">) => Promise<void>;
+  removeFavorite: (favId: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -91,9 +93,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setUser(res.user);
   }, []);
 
+  const addFavorite = useCallback(async (fav: Omit<Favorite, "id">) => {
+    const res = await api<{ user: User }>("/auth/favorites", { method: "POST", json: fav });
+    setUser(res.user);
+  }, []);
+
+  const removeFavorite = useCallback(async (favId: string) => {
+    const res = await api<{ user: User }>(`/auth/favorites/${favId}`, { method: "DELETE" });
+    setUser(res.user);
+  }, []);
+
   const value = useMemo(
-    () => ({ user, ready, signIn, signUp, signOut, addAddress, removeAddress, updateProfile, refreshUser }),
-    [user, ready, signIn, signUp, signOut, addAddress, removeAddress, updateProfile, refreshUser],
+    () => ({ user, ready, signIn, signUp, signOut, addAddress, removeAddress, updateProfile, refreshUser, addFavorite, removeFavorite }),
+    [user, ready, signIn, signUp, signOut, addAddress, removeAddress, updateProfile, refreshUser, addFavorite, removeFavorite],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

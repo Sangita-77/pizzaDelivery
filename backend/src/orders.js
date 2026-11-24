@@ -5,7 +5,6 @@ const { builderPrice } = require('./builder');
 const { PROMOS } = require('./promo');
 
 const router = Router();
-router.catchUpAll = catchUpAll;
 
 // Menu pizza size pricing: medium is the base price.
 const SIZE_DELTAS = { small: -3, medium: 0, large: 4 };
@@ -13,15 +12,7 @@ const SIZE_NAMES = { small: 'Personal 8"', medium: 'Classic 11"', large: 'Grande
 const DELIVERY_FEE = 2.99;
 const FREE_DELIVERY_OVER = 30;
 const TAX_RATE = 0.05;
-// Compressed demo timeline in seconds from placement (full journey ~3.5 min).
-const TIMELINE = [
-  ['placed', 0],
-  ['confirmed', 12],
-  ['baking', 30],
-  ['quality_check', 75],
-  ['out_for_delivery', 105],
-  ['delivered', 195],
-];
+// Status changes are made by the shop owner from the kitchen dashboard (src/kitchen.js).
 const DRIVERS = [
   { name: 'Marco Rossi', phone: '+1 555 0124', vehicle: 'Vespa • FN 21 34' },
   { name: 'Anna Conti', phone: '+1 555 0198', vehicle: 'Fiat 500 • AB 12 90' },
@@ -67,8 +58,8 @@ async function priceItems(rawItems) {
         name: doc.name,
         image: doc.image,
         qty,
-        unitPrice: round2(doc.basePrice + SIZE_DELTAS[size]),
-        details: { size, sizeName: SIZE_NAMES[size] },
+        unitPrice: doc.hasSizes ? round2(doc.basePrice + SIZE_DELTAS[size]) : round2(doc.basePrice),
+        details: doc.hasSizes ? { size, sizeName: SIZE_NAMES[size] } : null,
       };
     }
     // custom pizza — priced server-side from the builder config
@@ -151,7 +142,6 @@ router.post('/', async (req, res, next) => {
       etaMinutes: 28,
     });
     await user.save();
-    schedule(order);
     res.status(201).json({ order: clean(order) });
   } catch (err) {
     next(err);
@@ -161,7 +151,7 @@ router.post('/', async (req, res, next) => {
 router.get('/', async (req, res, next) => {
   try {
     const query = { user: req.userId };
-    if (req.query.active === '1') query.status = { $ne: 'delivered' };
+    if (req.query.active === '1') query.status = { $nin: ['delivered', 'cancelled'] };
     const orders = await Order.find(query).sort({ createdAt: -1 }).limit(50).lean();
     res.json({ orders: clean(orders) });
   } catch (err) {
@@ -180,62 +170,28 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// ---- Live status progression (compressed demo timeline) ----
-async function advance(o) {
-  const created = o.createdAt.getTime();
-  const elapsedSec = (Date.now() - created) / 1000;
-  let target = 'placed';
-  let targetSec = 0;
-  for (const [status, sec] of TIMELINE) {
-    if (elapsedSec >= sec) {
-      target = status;
-      targetSec = sec;
-    }
-  }
-  if (o.status === target) return;
-  const have = new Set(o.statusHistory.map((h) => h.status));
-  const history = [...o.statusHistory];
-  for (const [status, sec] of TIMELINE) {
-    if (sec <= targetSec && !have.has(status)) history.push({ status, at: new Date(created + sec * 1000) });
-  }
-  history.sort((a, b) => new Date(a.at) - new Date(b.at));
-  o.status = target;
-  o.statusHistory = history;
-  if (target === 'delivered' && !o.deliveredAt) o.deliveredAt = new Date(created + targetSec * 1000);
-  await o.save();
-}
-
-function schedule(o) {
-  const created = o.createdAt.getTime();
-  const elapsedSec = (Date.now() - created) / 1000;
-  const idx = TIMELINE.findIndex(([s]) => s === o.status);
-  for (let i = idx + 1; i < TIMELINE.length; i++) {
-    const [status, sec] = TIMELINE[i];
-    const delay = Math.max(0, (sec - elapsedSec) * 1000);
-    setTimeout(() => {
-      Order.updateOne(
-        { _id: o._id, status: { $nin: [status, 'delivered'] } },
-        {
-          status,
-          $push: { statusHistory: { status, at: new Date() } },
-          ...(status === 'delivered' ? { deliveredAt: new Date() } : {}),
-        },
-      ).exec().catch(() => {});
-    }, delay);
-  }
-}
-
-async function catchUpAll() {
+// Customers rate a delivered order once (1–5 stars + optional comment).
+router.post('/:id/rating', async (req, res, next) => {
   try {
-    const stale = await Order.find({ status: { $ne: 'delivered' } });
-    for (const o of stale) {
-      await advance(o);
-      schedule(o);
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Order not found' });
+    const stars = Number.parseInt(req.body.stars, 10);
+    if (!(stars >= 1 && stars <= 5)) return res.status(400).json({ error: 'Please choose 1 to 5 stars' });
+    const comment = String(req.body.comment || '').trim().slice(0, 500);
+    const order = await Order.findOneAndUpdate(
+      { _id: req.params.id, user: req.userId, status: 'delivered', rating: null },
+      { $set: { rating: { stars, comment, at: new Date() } } },
+      { new: true },
+    ).lean();
+    if (!order) {
+      const existing = await Order.findOne({ _id: req.params.id, user: req.userId }, { status: 1, rating: 1 }).lean();
+      if (!existing) return res.status(404).json({ error: 'Order not found' });
+      if (existing.rating) return res.status(409).json({ error: 'You have already rated this order' });
+      return res.status(409).json({ error: 'You can rate an order once it is delivered' });
     }
-    if (stale.length) console.log(`[orders] caught up ${stale.length} in-flight order(s)`);
+    res.json({ order: clean(order) });
   } catch (err) {
-    console.error('[orders] catchUpAll failed:', err.message);
+    next(err);
   }
-}
+});
 
 module.exports = router;

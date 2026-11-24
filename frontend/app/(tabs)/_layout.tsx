@@ -1,13 +1,18 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { Platform } from "react-native";
 
+import { useAuth } from "@/src/auth";
 import { usesNativeTabs } from "@/src/navigation";
 import { fonts, useTheme } from "@/src/theme";
 
 export default function TabsLayout() {
   const { colors } = useTheme();
+  const { user } = useAuth();
+
+  // The shop owner works from the kitchen dashboard, not the customer tabs.
+  if (user?.role === "owner") return <Redirect href="/kitchen" />;
 
   // iOS 26+ gets true native tab bars (Liquid Glass); everything else uses the
   // classic JS tab bar styled for the warm artisan palette.

@@ -8,6 +8,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Linking } from "react-native";
 
 import { api } from "@/src/api";
+import { RateOrder } from "@/src/components/RateOrder";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { ErrorState, Loading } from "@/src/components/ui";
 import { fonts, makeStyles, radius, useTheme } from "@/src/theme";
 import { money, STATUS_LABEL, STATUS_ORDER, type Order, type OrderStatus } from "@/src/types";
@@ -24,7 +26,7 @@ export default function OrderTracking() {
   const orderQuery = useQuery({
     queryKey: ["order", id],
     queryFn: () => api<{ order: Order }>(`/orders/${id}`),
-    refetchInterval: (q: any) => (q?.state?.data?.order?.status === "delivered" ? false : 4000),
+    refetchInterval: (q: any) => (["delivered", "cancelled"].includes(q?.state?.data?.order?.status) ? false : 4000),
   });
 
   if (orderQuery.isLoading) {
@@ -45,11 +47,22 @@ export default function OrderTracking() {
   const order = orderQuery.data.order;
   const currentIdx = STATUS_ORDER.indexOf(order.status);
   const delivered = order.status === "delivered";
+  const cancelled = order.status === "cancelled";
 
   const timeFor = (status: OrderStatus) => {
     const h = order.statusHistory.find((s) => s.status === status);
     return h ? dayjs(h.at).format("h:mm A") : "";
   };
+
+  const heroSub = cancelled
+    ? order.cancelReason || "The restaurant couldn't take this order"
+    : delivered
+      ? `Delivered at ${timeFor("delivered")}`
+      : order.status === "placed"
+        ? "The kitchen will accept your order in a moment"
+        : order.status === "out_for_delivery"
+          ? "Arriving in about 10 minutes"
+          : `Estimated arrival in ~${order.etaMinutes} min`;
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]} testID="order-tracking-screen">
@@ -61,7 +74,9 @@ export default function OrderTracking() {
         <Text style={styles.headerTitle}>Order #{order.number}</Text>
       </View>
 
-      <Animated.ScrollView
+      <KeyboardAwareScrollView
+        bottomOffset={24}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 24, paddingBottom: insets.bottom + 24, gap: 20 }}
       >
@@ -69,23 +84,24 @@ export default function OrderTracking() {
           <View style={styles.confettiCard} testID="order-confirmed-banner">
             <Ionicons name="checkmark-circle" size={26} color={colors.onBrandPrimary} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.confettiTitle}>Order confirmed!</Text>
-              <Text style={styles.confettiSub}>The oven is heating up — sit tight.</Text>
+              <Text style={styles.confettiTitle}>Order placed!</Text>
+              <Text style={styles.confettiSub}>We&apos;ve sent it to the kitchen — sit tight.</Text>
             </View>
           </View>
         ) : null}
 
         {/* Status hero */}
-        <View style={styles.statusHero}>
-          <Text style={styles.statusHeroLabel} testID="order-status-label">
+        <View style={[styles.statusHero, cancelled && { backgroundColor: colors.error }]}>
+          <Text style={[styles.statusHeroLabel, cancelled && { color: colors.onError }]} testID="order-status-label">
             {STATUS_LABEL[order.status]}
           </Text>
-          <Text style={styles.statusHeroEta}>
-            {delivered ? `Delivered at ${timeFor("delivered")}` : `Estimated arrival in ~${order.etaMinutes} min`}
+          <Text style={[styles.statusHeroEta, cancelled && { color: colors.onError }]} testID="order-status-sub">
+            {heroSub}
           </Text>
         </View>
 
         {/* Timeline */}
+        {cancelled ? null : (
         <View style={styles.timeline}>
           {STAGES.map((stage, idx) => {
             const done = currentIdx >= STATUS_ORDER.indexOf(stage) && !(stage === "delivered" && !delivered);
@@ -110,6 +126,7 @@ export default function OrderTracking() {
             );
           })}
         </View>
+        )}
 
         {/* Driver card */}
         {(order.status === "out_for_delivery" || delivered) && order.driver ? (
@@ -167,7 +184,9 @@ export default function OrderTracking() {
             </Text>
           </View>
         </View>
-      </Animated.ScrollView>
+
+        {delivered ? <RateOrder order={order} /> : null}
+      </KeyboardAwareScrollView>
     </View>
   );
 }

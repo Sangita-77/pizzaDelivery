@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/src/auth";
 import { useCart } from "@/src/cart";
+import { favoriteSubtitle, useAddFavoriteToCart } from "@/src/components/FavoritesRow";
+import { money } from "@/src/types";
 import { useToast } from "@/src/components/Toast";
 import { Field, PrimaryButton } from "@/src/components/ui";
 import { usesNativeTabs } from "@/src/navigation";
@@ -17,7 +19,8 @@ export default function Profile() {
   const styles = useStyles();
   const { colors } = useTheme();
   const router = useRouter();
-  const { user, signOut, addAddress, removeAddress } = useAuth();
+  const { user, signOut, addAddress, removeAddress, removeFavorite } = useAuth();
+  const addFavToCart = useAddFavoriteToCart();
   const toast = useToast();
   const cart = useCart();
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
@@ -181,6 +184,50 @@ export default function Profile() {
           ) : null}
         </View>
 
+        {/* Favourites */}
+        <View style={{ gap: 12 }} testID="profile-favorites">
+          <Text style={styles.sectionTitle}>Favourite pizzas</Text>
+          {(user.favorites ?? []).length === 0 ? (
+            <Text style={styles.muted}>Tap the heart on any pizza or your own build to save it here for one-tap ordering.</Text>
+          ) : (
+            user.favorites.map((f) => (
+              <View key={f.id} style={styles.addressCard} testID={`profile-favorite-${f.id}`}>
+                <Ionicons name="heart" size={18} color={colors.brandPrimary} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={styles.addressLabel} numberOfLines={1}>
+                    {f.name}
+                  </Text>
+                  <Text style={styles.muted}>
+                    {favoriteSubtitle(f)} · {money(f.unitPrice)}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => addFavToCart(f)}
+                  testID={`profile-favorite-add-${f.id}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add ${f.name} to cart`}
+                  style={styles.favAdd}
+                >
+                  <Ionicons name="add" size={20} color={colors.onBrandPrimary} />
+                </Pressable>
+                <Pressable
+                  onPress={() =>
+                    removeFavorite(f.id)
+                      .then(() => toast.show("Removed from favourites"))
+                      .catch((e) => toast.show(e?.message || "Could not remove favourite", "error"))
+                  }
+                  testID={`profile-favorite-remove-${f.id}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${f.name} from favourites`}
+                  style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+                >
+                  <Ionicons name="close" size={18} color={colors.muted} />
+                </Pressable>
+              </View>
+            ))
+          )}
+        </View>
+
         {/* Sign out */}
         <Pressable onPress={onSignOut} testID="profile-signout-button" accessibilityRole="button" style={styles.signOut}>
           <Ionicons name="log-out-outline" size={18} color={colors.error} />
@@ -285,6 +332,14 @@ const useStyles = makeStyles((colors) => ({
     borderColor: colors.border,
     borderRadius: radius.lg,
     padding: 16,
+  },
+  favAdd: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    backgroundColor: colors.brandPrimary,
+    alignItems: "center",
+    justifyContent: "center",
   },
   signOut: {
     flexDirection: "row",

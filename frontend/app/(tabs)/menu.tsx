@@ -55,7 +55,7 @@ export default function Menu() {
         name: item.name,
         image: item.image,
         unitPrice: Math.round((item.basePrice + SIZE_DELTAS.medium) * 100) / 100,
-        details: { size: "medium", sizeName: SIZE_LABEL.medium },
+        details: item.hasSizes ? { size: "medium", sizeName: SIZE_LABEL.medium } : undefined,
       },
       1,
     );

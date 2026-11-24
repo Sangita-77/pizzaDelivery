@@ -48,7 +48,9 @@ export type User = {
   name: string;
   email: string;
   phone: string;
+  role: "customer" | "owner";
   addresses: Address[];
+  favorites: Favorite[];
 };
 
 export type CartItem = {
@@ -78,7 +80,17 @@ export type Pricing = {
   total: number;
 };
 
-export type OrderStatus = "placed" | "confirmed" | "baking" | "quality_check" | "out_for_delivery" | "delivered";
+export type OrderStatus = "placed" | "confirmed" | "baking" | "quality_check" | "out_for_delivery" | "delivered" | "cancelled";
+
+export type Favorite = {
+  id: string;
+  kind: "menu" | "custom";
+  key?: string;
+  name: string;
+  image?: string;
+  unitPrice: number;
+  details?: any;
+};
 
 export type OrderItem = {
   type: "menu" | "custom";
@@ -104,18 +116,31 @@ export type Order = {
   driver: { name: string; phone: string; vehicle: string } | null;
   etaMinutes: number;
   deliveredAt: string | null;
+  cancelReason?: string;
+  rating?: { stars: number; comment: string; at: string } | null;
+  customer?: { name: string; email: string; phone: string } | null;
   createdAt: string;
 };
 
 export const STATUS_ORDER: OrderStatus[] = ["placed", "confirmed", "baking", "quality_check", "out_for_delivery", "delivered"];
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
-  placed: "Order placed",
-  confirmed: "Order confirmed",
+  placed: "Waiting for the kitchen",
+  confirmed: "Order accepted",
   baking: "In the wood-fired oven",
   quality_check: "Quality check",
   out_for_delivery: "On its way",
   delivered: "Delivered",
+  cancelled: "Cancelled",
+};
+
+// Owner-facing action label to move an order to the next step.
+export const NEXT_ACTION: Partial<Record<OrderStatus, string>> = {
+  placed: "Accept order",
+  confirmed: "Start baking",
+  baking: "Quality check",
+  quality_check: "Send out for delivery",
+  out_for_delivery: "Mark delivered",
 };
 
 // Menu pizza size pricing (mirrors backend; server is authoritative).

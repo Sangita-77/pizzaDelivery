@@ -12,6 +12,19 @@ const AddressSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const FavoriteSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    kind: { type: String, enum: ['menu', 'custom'], required: true },
+    key: { type: String, default: '' },
+    name: { type: String, required: true },
+    image: { type: String, default: '' },
+    unitPrice: { type: Number, required: true },
+    details: { type: mongoose.Schema.Types.Mixed, default: null },
+  },
+  { _id: false },
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -19,6 +32,8 @@ const userSchema = new mongoose.Schema(
     passwordHash: { type: String, required: true, select: false },
     phone: { type: String, default: '' },
     addresses: { type: [AddressSchema], default: [] },
+    role: { type: String, enum: ['customer', 'owner'], default: 'customer' },
+    favorites: { type: [FavoriteSchema], default: [] },
   },
   { timestamps: true },
 );
@@ -70,6 +85,14 @@ const orderSchema = new mongoose.Schema(
     driver: { type: mongoose.Schema.Types.Mixed, default: null },
     etaMinutes: { type: Number, default: 28 },
     deliveredAt: { type: Date, default: null },
+    cancelReason: { type: String, default: '' },
+    rating: {
+      type: new mongoose.Schema(
+        { stars: { type: Number, min: 1, max: 5 }, comment: { type: String, default: '' }, at: Date },
+        { _id: false },
+      ),
+      default: null,
+    },
   },
   { timestamps: true },
 );

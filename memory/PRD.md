@@ -28,7 +28,20 @@ User choices: Node.js backend · full Domino's-style scope (menu, custom pizza b
 - Security: protected order routes, passwords never returned, login rate limit
 
 ## Mocked
-- Order status progression and driver assignment run on a server timer (demo)
+- Driver name/vehicle are demo data. Cash on Delivery only.
+
+## Implemented — iteration 2 (Nov 24, 2026)
+- Owner role + idempotent owner seed (OWNER_EMAIL/OWNER_PASSWORD); requireOwner re-checks role in DB
+- Kitchen Dashboard (/kitchen): stats, New/In progress/Completed/Ratings filters, step-by-step advance, reject/cancel with reason
+- Automatic status timer removed — only the owner moves orders
+- Favourites (menu items per size + custom builds): heart on item/builder, Home row, Profile list, one-tap add
+- Ratings: 1–5 stars + comment on delivered orders (once); kitchen ranking + recent reviews
+- Project guide PDF: /app/docs/Fornello_Project_Guide.pdf (generator: /app/docs/generate_guide.py), served at /api/images/docs/Fornello_Project_Guide.pdf
+
+## Known minor issues
+- Rate limiter keys on first X-Forwarded-For (spoofable) and counts successful logins
+- Order number = count+1001 (no unique index; rare race)
+- Kitchen "today" uses server midnight; stat cards scroll sideways on small phones
 
 ## Backlog
 - P0: Shop owner/kitchen dashboard to accept orders and update status manually

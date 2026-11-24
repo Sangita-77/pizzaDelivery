@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, imageUrl } from "@/src/api";
 import { useCart } from "@/src/cart";
 import { MenuItemRow } from "@/src/components/MenuItemRow";
+import { FavoritesRow } from "@/src/components/FavoritesRow";
 import { useToast } from "@/src/components/Toast";
 import { Chip, ErrorState, Loading, SectionTitle } from "@/src/components/ui";
 import { tap } from "@/src/haptics";
@@ -41,7 +42,7 @@ export default function Home() {
     refetchInterval: 8000,
   });
 
-  const activeOrder = ordersQuery.data?.orders?.find((o) => o.status !== "delivered");
+  const activeOrder = ordersQuery.data?.orders?.find((o) => o.status !== "delivered" && o.status !== "cancelled");
   const items = useMemo(() => menuQuery.data?.items ?? [], [menuQuery.data]);
   const popular = useMemo(() => items.filter((i) => i.popular).slice(0, 6), [items]);
   const filtered = category === "all" ? items : items.filter((i) => i.category === category);
@@ -55,7 +56,7 @@ export default function Home() {
         name: item.name,
         image: item.image,
         unitPrice: Math.round((item.basePrice + SIZE_DELTAS.medium) * 100) / 100,
-        details: { size: "medium", sizeName: SIZE_LABEL.medium },
+        details: item.hasSizes ? { size: "medium", sizeName: SIZE_LABEL.medium } : undefined,
       },
       1,
     );
@@ -148,6 +149,9 @@ export default function Home() {
               />
             ))}
           </ScrollView>
+
+          {/* Favourites */}
+          {category === "all" ? <FavoritesRow /> : null}
 
           {/* Popular */}
           {category === "all" ? (

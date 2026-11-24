@@ -30,7 +30,7 @@ export default function Login() {
     setSubmitting(true);
     try {
       await signIn(email, password);
-      router.replace(redirect ? (redirect as "/(tabs)") : "/(tabs)");
+      router.replace(redirect ? (redirect as "/(tabs)") : "/");
     } catch (e: any) {
       setError(e?.message || "Could not sign in. Please try again");
       setSubmitting(false);

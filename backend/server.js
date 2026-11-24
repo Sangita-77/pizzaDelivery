@@ -15,6 +15,7 @@ const { menuRouter, ensureSeed } = require('./src/menu');
 const { BUILDER_CONFIG } = require('./src/builder');
 const ordersRouter = require('./src/orders');
 const { promoRouter } = require('./src/promo');
+const kitchenRouter = require('./src/kitchen');
 
 const PORT = Number(process.env.PORT || 8002);
 
@@ -33,6 +34,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/menu', menuRouter);
 app.use('/api/orders', authRouter.requireAuth, ordersRouter);
 app.use('/api/promo', promoRouter);
+app.use('/api/kitchen', authRouter.requireAuth, authRouter.requireOwner, kitchenRouter);
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
@@ -60,7 +62,7 @@ app.listen(PORT, '0.0.0.0', () => console.log(`[api] Fornello API listening on $
 
 connectDb()
   .then(() => ensureSeed())
-  .then(() => ordersRouter.catchUpAll())
+  .then(() => authRouter.seedOwner())
   .catch((err) => {
     console.error('[api] startup failure:', err);
     process.exit(1);

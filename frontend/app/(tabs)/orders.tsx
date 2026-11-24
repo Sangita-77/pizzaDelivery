@@ -48,8 +48,8 @@ export default function Orders() {
   });
 
   const orders = useMemo(() => ordersQuery.data?.orders ?? [], [ordersQuery.data]);
-  const active = orders.filter((o) => o.status !== "delivered");
-  const past = orders.filter((o) => o.status === "delivered");
+  const active = orders.filter((o) => o.status !== "delivered" && o.status !== "cancelled");
+  const past = orders.filter((o) => o.status === "delivered" || o.status === "cancelled");
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
 
   const reorder = (order: Order) => {
@@ -141,6 +141,26 @@ export default function Orders() {
                   <Text style={styles.cardSummary} numberOfLines={2}>
                     {summary(order)}
                   </Text>
+                  {order.status === "cancelled" ? (
+                    <Text style={[styles.statusNote, { color: colors.error }]} testID={`orders-cancelled-${order.id}`}>
+                      Cancelled · {order.cancelReason || "The restaurant couldn't take this order"}
+                    </Text>
+                  ) : order.rating ? (
+                    <Text style={[styles.statusNote, { color: colors.warning }]} testID={`orders-rating-${order.id}`}>
+                      {"★".repeat(order.rating.stars)}
+                      {"☆".repeat(5 - order.rating.stars)} You rated this order
+                    </Text>
+                  ) : (
+                    <Pressable
+                      onPress={() => router.push({ pathname: "/order/[id]", params: { id: order.id } })}
+                      testID={`orders-rate-${order.id}`}
+                      accessibilityRole="button"
+                      style={styles.rateBtn}
+                    >
+                      <Ionicons name="star-outline" size={15} color={colors.warning} />
+                      <Text style={[styles.statusNote, { color: colors.warning }]}>Rate this order</Text>
+                    </Pressable>
+                  )}
                   <View style={styles.cardFooter}>
                     <Text style={styles.cardTotal}>{money(order.pricing.total)}</Text>
                     <Pressable
@@ -266,5 +286,16 @@ const useStyles = makeStyles((colors) => ({
     color: colors.brandSecondary,
     fontFamily: fonts.bodyMedium,
     fontSize: 13,
+  },
+  statusNote: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+  },
+  rateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    minHeight: 44,
   },
 }));

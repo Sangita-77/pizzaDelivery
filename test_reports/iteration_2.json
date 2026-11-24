@@ -1,0 +1,46 @@
+{
+  "summary": "Iteration 2: tested Kitchen Dashboard (owner), no-auto-timer, owner cancel/reject, order ratings, favourites, sizeless items, plus customer regression (login, menu, cart, WELCOME10 promo, checkout, tracking, orders tab, re-order). Backend: 37/37 pytest pass (one obsolete auto-timer test in test_fornello_api.py was updated to assert orders stay 'placed'). Frontend: owner login -> /kitchen, stat cards, filter chips, all 5 advance buttons (Accept order/Start baking/Quality check/Send out for delivery/Mark delivered), Reject panel with 4 reason chips + Keep order/Reject order, Completed view with 'Rejected: <reason>', Ratings view (average 4.5, ranked items, recent reviews), sign out all work. Customer: 'Waiting for the kitchen' after checkout, tracking updated live via polling when owner advanced (confirmed->baking->...->delivered), red Cancelled banner with reason appears live, star rating form -> read-only rating, Orders tab shows cancelled reason / rated stars / Rate this order / Re-order, favourites heart per size on item page, builder heart, Home 'Your favourites' one-tap add (cart badge 1->2), Profile favourites add-to-cart + remove. One bug found and FIXED: /kitchen redirected to /login on page reload/deep link because kitchen.tsx did not wait for auth 'ready' (owner refresh logged them out of the dashboard view; customer was sent to /login instead of /). No deprecated Expo packages detected (no expo-av / expo-barcode-scanner / expo-background-fetch).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/auth/login, /api/auth/register (authLimiter)", "issue": "Rate-limit key is the FIRST X-Forwarded-For entry, which is client-controlled: an attacker can rotate a fake XFF header to bypass brute-force protection. Prefer the right-most proxy-appended IP (or the ingress's real-IP header). Also successful logins count toward the 40/15min budget, which made automated tests hit 429."},
+      {"endpoint": "POST /api/orders", "issue": "Order number = countDocuments()+1001 is not atomic and the schema has no unique index on 'number'; two simultaneous checkouts can get the same order number (kitchen staff identify orders by #number). Use an atomic counter (findOneAndUpdate $inc) + unique index."},
+      {"endpoint": "POST /api/auth/favorites", "issue": "name/unitPrice/image/details are stored exactly as the client sent them (key not checked against menu, price not re-computed). Order pricing is server-side so no money risk, but a favourite can show a stale/wrong price after a menu price change; consider re-pricing favourites server-side from key/details."},
+      {"endpoint": "GET /api/kitchen/stats", "issue": "'today' uses server local midnight (container TZ, likely UTC), not the shop's timezone; 'Delivered today'/'Revenue today' can roll over at the wrong hour. Also the per-item ranking includes drinks/sides although the UI title says 'Pizzas ranked by rating'."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Kitchen screen auth gate", "issue": "FIXED by testing agent: reload / deep link on /kitchen redirected owner to /login (and customer to /login instead of /) because user is null until stored session loads. Added `if (!ready) return <Loading/>` before redirects. Verified: owner reload stays on /kitchen; customer /kitchen -> /.", "testID": "kitchen-screen", "priority": "HIGH (fixed)"},
+      {"component": "Kitchen ratings header", "issue": "Average 4.5 renders 5 full stars (Math.round) — looks like a perfect score. Recent reviews show only filled stars (e.g. ★★★★ with no empty star), inconsistent with the header and the customer view.", "testID": "kitchen-ratings", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Kitchen (390px)", "issues": ["4 stat cards are in a horizontal scroller: 'Delivered today' card is clipped and 'Revenue today' is fully off-screen with no scroll affordance — consider a 2x2 grid so the owner sees revenue at a glance", "Filter chips row clips the 'Ratings' chip at the right edge"]},
+      {"screen": "Profile favourites", "issue_note": "", "issues": ["Remove (X) deletes a favourite instantly with no undo/confirm, unlike addresses which have a confirm step"]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_kitchen_favorites_ratings.py", "/app/backend/tests/test_fornello_api.py", "/app/test_reports/pytest/pytest_iter2.xml"],
+  "action_items": [
+    "Review the kitchen.tsx auth-ready fix applied by the testing agent (line ~91) and keep it",
+    "Rate limiter: do not trust client-supplied first X-Forwarded-For entry; consider skipSuccessfulRequests for login",
+    "Make order numbers atomic + unique (counter collection) to avoid duplicate #numbers in the kitchen",
+    "Kitchen ratings: show half/rounded-down stars for averages and render empty stars in recent reviews; rename 'Pizzas ranked' or filter to pizzas",
+    "Kitchen stat cards: use a 2x2 grid on phones so Revenue is visible without horizontal scrolling",
+    "Optional: compute 'today' in the shop timezone; re-price favourites server-side"
+  ],
+  "critical_code_review_comments": [
+    "requireOwner re-reads role from DB on every request (good); register ignores a client 'role' field (verified)",
+    "advance/cancel use conditional findOneAndUpdate on current status — race-safe (good)",
+    "Owner can still open customer stack routes directly (/cart, /checkout, /item/:id) — only the tabs layout redirects owners; low risk",
+    "Rating endpoint returns 404 (not 403) for another customer's order — acceptable, avoids leaking existence"
+  ],
+  "updated_files": ["/app/frontend/app/kitchen.tsx", "/app/backend/tests/test_fornello_api.py", "/app/backend/tests/test_kitchen_favorites_ratings.py"],
+  "success_rate": {"backend": "100% (37/37)", "frontend": "~96% (1 bug found and fixed, minor visual issues)"},
+  "seed_data_creation": "Created TEST_ customer accounts (test_*@example.com) and TEST_ orders (notes 'TEST_order'/'TEST_ui_checkout'); orders cannot be deleted via API so they were moved to cancelled (reason 'TEST_cleanup'/'TEST_Closing soon') or delivered. testy's order #1014 was advanced to delivered and rated 4 stars ('TEST_ crispy crust'); #1027 placed via UI and cancelled. TEST_Kitchen's delivered order #1016 has a 4-star 'TEST_tasty' review that now appears in the owner's Ratings/Recent reviews and affects the average. NOTE: during the Profile favourites UI test the testing agent removed testy's pre-existing 'Margherita Fiore (Classic 11\")' favourite; it was re-created via API with identical content (new id).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Env var for tests is EXPO_PUBLIC_BACKEND_URL. Run pytest with -n0. Auth limiter = 40 login/register per 15 min per IP — running both test files + UI tests repeatedly will hit 429; wait for reset. Kitchen order ids for UI tests can be fetched via GET /api/kitchen/orders?filter=new with owner token. Use page.request with owner token to advance orders while the customer tracking screen is open (polling 4s).",
+  "rca_of_issue": "Kitchen redirect bug: app/kitchen.tsx evaluated `if (!user) <Redirect href='/login'/>` on first render; on web reload/deep link AuthProvider has ready=false and user=null while it reads the stored token, so the screen redirected before the session loaded. Repro: log in as owner, reload /kitchen -> /login. Fix: read `ready` from useAuth and render <Loading/> until ready."
+}

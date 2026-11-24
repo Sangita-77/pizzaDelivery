@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, imageUrl } from "@/src/api";
+import { useAuth } from "@/src/auth";
 import { useCart } from "@/src/cart";
 import { useToast } from "@/src/components/Toast";
 import { ErrorState, Loading, Stepper } from "@/src/components/ui";
@@ -34,6 +35,8 @@ export default function ItemDetail() {
 
   const [size, setSize] = useState<SizeId>("medium");
   const [qty, setQty] = useState(1);
+  const [favSaving, setFavSaving] = useState(false);
+  const { user, addFavorite, removeFavorite } = useAuth();
 
   if (menuQuery.isLoading) {
     return (
@@ -51,6 +54,39 @@ export default function ItemDetail() {
   }
 
   const unitPrice = item.hasSizes ? Math.round((item.basePrice + SIZE_DELTAS[size]) * 100) / 100 : item.basePrice;
+  const favMatch = user?.favorites?.find(
+    (f) => f.kind === "menu" && f.key === item.key && (f.details?.size ?? null) === (item.hasSizes ? size : null),
+  );
+
+  const toggleFavorite = async () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    if (favSaving) return;
+    tap();
+    setFavSaving(true);
+    try {
+      if (favMatch) {
+        await removeFavorite(favMatch.id);
+        toast.show("Removed from favourites");
+      } else {
+        await addFavorite({
+          kind: "menu",
+          key: item.key,
+          name: item.name,
+          image: item.image,
+          unitPrice,
+          details: item.hasSizes ? { size, sizeName: SIZE_LABEL[size] } : null,
+        });
+        toast.show("Saved to favourites", "success");
+      }
+    } catch (e: any) {
+      toast.show(e?.message || "Could not update favourites", "error");
+    } finally {
+      setFavSaving(false);
+    }
+  };
 
   const addToCart = () => {
     cart.addItem(
@@ -89,6 +125,16 @@ export default function ItemDetail() {
             hitSlop={8}
           >
             <Ionicons name="chevron-back" size={20} color={colors.onSurface} />
+          </Pressable>
+          <Pressable
+            onPress={toggleFavorite}
+            testID="item-favorite-button"
+            accessibilityRole="button"
+            accessibilityLabel={favMatch ? "Remove from favourites" : "Save to favourites"}
+            accessibilityState={{ selected: !!favMatch }}
+            style={[styles.backButton, styles.favButton, { top: insets.top + 12 }]}
+          >
+            <Ionicons name={favMatch ? "heart" : "heart-outline"} size={20} color={favMatch ? colors.brandPrimary : colors.onSurface} />
           </Pressable>
         </View>
 
@@ -170,12 +216,16 @@ const useStyles = makeStyles((colors) => ({
   backButton: {
     position: "absolute",
     left: 16,
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: radius.pill,
     backgroundColor: "rgba(253,251,247,0.92)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  favButton: {
+    left: undefined,
+    right: 16,
   },
   body: {
     padding: 24,

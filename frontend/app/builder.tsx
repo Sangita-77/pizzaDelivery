@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/src/api";
+import { useAuth } from "@/src/auth";
 import { useCart } from "@/src/cart";
 import { useToast } from "@/src/components/Toast";
 import { Chip, ErrorState, Loading } from "@/src/components/ui";
@@ -29,6 +30,8 @@ export default function Builder() {
   const [sauce, setSauce] = useState("tomato");
   const [cheese, setCheese] = useState("fior");
   const [toppings, setToppings] = useState<string[]>([]);
+  const [favSaving, setFavSaving] = useState(false);
+  const { user, addFavorite, removeFavorite } = useAuth();
 
   const price = useMemo(() => {
     if (!config) return 0;
@@ -56,6 +59,32 @@ export default function Builder() {
   }
 
   const toggleTopping = (id: string) => setToppings((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
+
+  const sizeName = config.sizes.find((s) => s.id === size)?.name ?? "";
+  const details = { size, crust, sauce, cheese, toppings };
+  const favMatch = user?.favorites?.find((f) => f.kind === "custom" && JSON.stringify(f.details) === JSON.stringify(details));
+
+  const toggleFavorite = async () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    if (favSaving) return;
+    setFavSaving(true);
+    try {
+      if (favMatch) {
+        await removeFavorite(favMatch.id);
+        toast.show("Removed from favourites");
+      } else {
+        await addFavorite({ kind: "custom", name: `Build-Your-Own • ${sizeName}`, image: "", unitPrice: price, details });
+        toast.show("Your creation is saved to favourites", "success");
+      }
+    } catch (e: any) {
+      toast.show(e?.message || "Could not update favourites", "error");
+    } finally {
+      setFavSaving(false);
+    }
+  };
 
   const addToCart = () => {
     const sizeName = config.sizes.find((s) => s.id === size)?.name ?? "";
@@ -87,6 +116,16 @@ export default function Builder() {
             <Text style={styles.title}>Build your pizza</Text>
             <Text style={styles.subtitle}>Choose every layer, we fire it in 90 seconds.</Text>
           </View>
+          <Pressable
+            onPress={toggleFavorite}
+            testID="builder-favorite-button"
+            accessibilityRole="button"
+            accessibilityLabel={favMatch ? "Remove this build from favourites" : "Save this build to favourites"}
+            accessibilityState={{ selected: !!favMatch }}
+            style={styles.backBtn}
+          >
+            <Ionicons name={favMatch ? "heart" : "heart-outline"} size={20} color={favMatch ? colors.brandPrimary : colors.onSurface} />
+          </Pressable>
         </View>
 
         {/* Size */}
