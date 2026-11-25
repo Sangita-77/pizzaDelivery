@@ -1,8 +1,8 @@
+
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # IDE and editors
 .idea/
-.vscode/
 
 # Dependencies
 node_modules/
@@ -80,3 +80,4 @@ memory/test_credentials.md
 
 # Mobile development
 android-sdk/frontend.zip
+config.bat
