@@ -1,6 +1,6 @@
 # Platform entrypoint (managed on port 8001). The user's backend of choice is
 # Node.js (Express + Mongoose) in this directory; this thin proxy forwards every
-# /api/* request to the Node server on 127.0.0.1:8002 so the platform's
+# /api/* request to the Node server on 127.0.0.1:8007 so the platform's
 # supervisor/uvicorn contract, /health probe and ingress keep working unchanged.
 import asyncio
 import logging
@@ -21,7 +21,7 @@ load_dotenv(ROOT_DIR / ".env")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("fornello-proxy")
 
-NODE_PORT = int(os.environ.get("NODE_PORT", "8002"))
+NODE_PORT = int(os.environ.get("NODE_PORT", "8007"))
 NODE_URL = f"http://127.0.0.1:{NODE_PORT}"
 NODE_LOG = open("/var/log/supervisor/node-backend.log", "ab")
 HOP_HEADERS = {"host", "content-length", "connection", "keep-alive", "transfer-encoding", "upgrade"}

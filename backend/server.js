@@ -1,5 +1,5 @@
 // Fornello Artisan Pizza API — Node.js (Express) + MongoDB (Mongoose).
-// Listens on NODE_PORT (default 8002). The platform-managed entrypoint on 8001
+// Listens on NODE_PORT (default 8007). The platform-managed entrypoint on 8001
 // forwards every /api/* request here, and static menu images are served from
 // /api/images/... so they pass through the same ingress route.
 require('dotenv').config();
@@ -17,7 +17,7 @@ const ordersRouter = require('./src/orders');
 const { promoRouter } = require('./src/promo');
 const kitchenRouter = require('./src/kitchen');
 
-const PORT = Number(process.env.PORT || 8002);
+const PORT = Number(process.env.PORT || 8007);
 
 const app = express();
 app.use(helmet({ crossOriginEmbedderPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' }, contentSecurityPolicy: false }));
